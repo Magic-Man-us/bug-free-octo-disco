@@ -21,6 +21,9 @@ python3 test_runner.py [PATTERN ...] [options]
 - `-d, --directory DIR`  Directory containing test scripts (default: `tests`)
 - `-t, --timeout SECS`   Per-test timeout in seconds (default: 30)
 - `--coverage`           Collect coverage with `kcov` if installed
+- `--json`              Write JSON results to `test_results.json`
+- `--html`              Write HTML summary to `test_results.html`
+- `--report-dir DIR`    Output directory for reports
 
 If one or more `PATTERN` arguments are provided, only tests matching those glob
 patterns will be executed.
@@ -28,6 +31,7 @@ patterns will be executed.
 ## Example
 
 Run all tests:
+
 
 ```bash
 python3 test_runner.py
@@ -47,3 +51,8 @@ be executed with `pytest`:
 ```bash
 pytest pytests
 ```
+
+### Reporting
+
+Use `--json` or `--html` to generate reports in JSON or HTML format. Each
+result includes the exit code and duration so you can track metrics over time.
