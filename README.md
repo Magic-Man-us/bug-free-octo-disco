@@ -2,6 +2,14 @@
 A simple Python-based test runner for shell scripts. Tests are discovered in the
 `tests/` directory by default and follow the pattern `test_*.sh`.
 
+## Requirements
+
+Install dependencies via pip:
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Usage
 
 ```bash
@@ -29,4 +37,13 @@ Run a specific test:
 
 ```bash
 python3 test_runner.py test_success.sh
+```
+
+### Developer tests
+
+Unit tests for `test_runner.py` are located in the `pytests/` directory and can
+be executed with `pytest`:
+
+```bash
+pytest pytests
 ```
