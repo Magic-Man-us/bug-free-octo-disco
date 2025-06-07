@@ -6,7 +6,7 @@ import json
 import time
 from pathlib import Path
 from typing import Iterable, List, Tuple, Dict
-
+import html
 from colorama import Fore, Style, init
 
 
@@ -20,17 +20,19 @@ def save_html_report(results: List[Dict], filename: Path) -> None:
     """Write a minimal HTML summary of test results."""
     with open(filename, "w") as f:
         f.write("<html><body><h1>Test Report</h1><table border='1'>")
-        f.write("<tr><th>Test</th><th>Status</th><th>Exit Code</th><th>Duration (s)</th></tr>")
+        f.write("<tr><th>Test</th><th>Status</th><th>Exit Code</th><th>Duration (s)</th><th>Stdout</th><th>Stderr</th></tr>")
         for r in results:
             color = {
                 0: "green",
                 -1: "orange",
             }.get(r["exit_code"], "red")
             f.write(
-                f"<tr><td>{r['name']}</td>"
+                f"<tr><td>{html.escape(str(r['name']))}</td>"
                 f"<td style='color:{color}'>{'PASS' if r['exit_code']==0 else 'FAIL'}</td>"
                 f"<td>{r['exit_code']}</td>"
-                f"<td>{r['duration']:.2f}</td></tr>"
+                f"<td>{r['duration']:.2f}</td>"
+                f"<td><pre>{html.escape(str(r.get('stdout', '')))}</pre></td>"
+                f"<td><pre>{html.escape(str(r.get('stderr', '')))}</pre></td></tr>"
             )
         f.write("</table></body></html>")
 
