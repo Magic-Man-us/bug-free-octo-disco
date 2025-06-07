@@ -13,6 +13,8 @@ from test_runner import find_test_scripts, run_test, run_all_tests
 TESTS_DIR = Path(__file__).resolve().parent.parent / "tests"
 SUCCESS_SCRIPT = TESTS_DIR / "test_success.sh"
 FAIL_SCRIPT = TESTS_DIR / "test_fail.sh"
+SIGNAL_SCRIPT = TESTS_DIR / "edge_signal.sh"
+TIMEOUT_SCRIPT = TESTS_DIR / "edge_timeout.sh"
 
 def test_find_test_scripts_default():
     scripts = find_test_scripts(str(TESTS_DIR))
@@ -61,3 +63,31 @@ def test_run_all_tests_fail(tmp_path, caplog):
         run_all_tests(str(dst), ["test_*.sh"], timeout=5, coverage=False)
     assert exc.value.code == 1
     assert "Failed Tests" in caplog.text
+
+
+def test_run_test_signal():
+    name, code, out, err = run_test(SIGNAL_SCRIPT)
+    assert name == "edge_signal.sh"
+    assert code == -9
+
+
+def test_run_test_timeout():
+    name, code, out, err = run_test(TIMEOUT_SCRIPT, timeout=1)
+    assert name == "edge_timeout.sh"
+    assert code == -1
+    assert "Timeout" in err
+
+
+def test_run_test_nonexistent():
+    missing = TESTS_DIR / "missing.sh"
+    name, code, out, err = run_test(missing)
+    assert name == "missing.sh"
+    assert code == 127
+
+
+def test_run_all_tests_no_scripts(tmp_path):
+    dst = tmp_path / "tests"
+    dst.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        run_all_tests(str(dst), ["test_*.sh"], timeout=1, coverage=False)
+    assert exc.value.code == 0
