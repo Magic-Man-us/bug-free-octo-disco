@@ -97,7 +97,7 @@ def run_all_tests(
     coverage: bool,
     json_report: bool = False,
     html_report: bool = False,
-    report_dir: str = ".",
+    report_dir: Path = Path("."),
 ) -> None:
     """Run all discovered tests and optionally write reports."""
     scripts = find_test_scripts(directory, patterns)
