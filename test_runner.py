@@ -4,6 +4,7 @@ import argparse
 import shutil
 import json
 import time
+import os
 from pathlib import Path
 from typing import Iterable, List, Tuple, Dict
 import html
@@ -20,7 +21,9 @@ def save_html_report(results: List[Dict], filename: Path) -> None:
     """Write a minimal HTML summary of test results."""
     with open(filename, "w") as f:
         f.write("<html><body><h1>Test Report</h1><table border='1'>")
-        f.write("<tr><th>Test</th><th>Status</th><th>Exit Code</th><th>Duration (s)</th><th>Stdout</th><th>Stderr</th></tr>")
+        f.write(
+            "<tr><th>Test</th><th>Status</th><th>Exit Code</th><th>Duration (s)</th><th>Stdout</th><th>Stderr</th></tr>"
+        )
         for r in results:
             color = {
                 0: "green",
@@ -36,18 +39,19 @@ def save_html_report(results: List[Dict], filename: Path) -> None:
             )
         f.write("</table></body></html>")
 
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler("test_run.log"),
-        logging.StreamHandler()
-    ]
+    handlers=[logging.FileHandler("test_run.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 init(autoreset=True)
 
-def find_test_scripts(directory: str = "tests", patterns: Iterable[str] = ("test_*.sh",)) -> List[Path]:
+
+def find_test_scripts(
+    directory: str = "tests", patterns: Iterable[str] = ("test_*.sh",)
+) -> List[Path]:
     """Return a sorted list of test script paths matching the given patterns."""
     test_dir = Path(directory)
     scripts: List[Path] = []
@@ -57,19 +61,37 @@ def find_test_scripts(directory: str = "tests", patterns: Iterable[str] = ("test
     unique_scripts = {s.resolve() for s in scripts if s.is_file()}
     return sorted(unique_scripts)
 
+
 def run_test(
-    script_path: Path, timeout: int = 30, coverage_dir: Path | None = None
+    script_path: Path,
+    timeout: int = 30,
+    coverage_dir: Path | None = None,
+    shell: str | None = None,
 ) -> Tuple[str, int, str, str, float]:
     """Run a single test script and return its results with duration."""
     logger.info(f"Running: {script_path}")
-    cmd = ["bash", str(script_path)]
+
+    if not script_path.exists():
+        return (script_path.name, 127, "", "File not found", 0.0)
+    if not os.access(script_path, os.R_OK):
+        return (script_path.name, 126, "", "File not readable", 0.0)
+
+    if shell is None:
+        if not os.access(script_path, os.X_OK):
+            return (script_path.name, 126, "", "Script not executable", 0.0)
+        cmd = [str(script_path)]
+    else:
+        cmd = [shell, str(script_path)]
     if coverage_dir:
         kcov = shutil.which("kcov")
         if not kcov:
-            logger.warning("Coverage requested but kcov not found. Running without coverage.")
+            logger.warning(
+                "Coverage requested but kcov not found. Running without coverage."
+            )
         else:
             coverage_dir.mkdir(parents=True, exist_ok=True)
-            cmd = [kcov, str(coverage_dir), "bash", str(script_path)]
+            inner_cmd = [shell, str(script_path)] if shell else [str(script_path)]
+            cmd = [kcov, str(coverage_dir), *inner_cmd]
     try:
         start = time.perf_counter()
         result = subprocess.run(
@@ -92,11 +114,13 @@ def run_test(
     except Exception as e:
         return (script_path.name, -2, "", f"Unexpected error: {e}", 0.0)
 
+
 def run_all_tests(
     directory: str,
     patterns: Iterable[str],
     timeout: int,
     coverage: bool,
+    shell: str | None,
     json_report: bool = False,
     html_report: bool = False,
     report_dir: Path = Path("."),
@@ -111,7 +135,7 @@ def run_all_tests(
     for script in scripts:
         coverage_path = coverage_dir / script.stem if coverage_dir else None
         name, code, out, err, dur = run_test(
-            script, timeout=timeout, coverage_dir=coverage_path
+            script, timeout=timeout, coverage_dir=coverage_path, shell=shell
         )
         results.append(
             {
@@ -152,15 +176,33 @@ def run_all_tests(
         logger.info(Fore.GREEN + "All tests passed.")
         exit(0)
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run shell test scripts")
     parser.add_argument("tests", nargs="*", help="Specific test patterns to run")
-    parser.add_argument("-d", "--directory", default="tests", help="Directory containing test scripts")
-    parser.add_argument("-t", "--timeout", type=int, default=30, help="Per-test timeout in seconds")
-    parser.add_argument("--coverage", action="store_true", help="Collect coverage using kcov if available")
-    parser.add_argument("--json", action="store_true", help="Write JSON results to test_results.json")
-    parser.add_argument("--html", action="store_true", help="Write HTML summary to test_results.html")
-    parser.add_argument("--report-dir", default=".", help="Directory for output reports")
+    parser.add_argument(
+        "-d", "--directory", default="tests", help="Directory containing test scripts"
+    )
+    parser.add_argument(
+        "-t", "--timeout", type=int, default=30, help="Per-test timeout in seconds"
+    )
+    parser.add_argument(
+        "--shell", help="Shell to execute tests with (default: use shebang)"
+    )
+    parser.add_argument(
+        "--coverage",
+        action="store_true",
+        help="Collect coverage using kcov if available",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Write JSON results to test_results.json"
+    )
+    parser.add_argument(
+        "--html", action="store_true", help="Write HTML summary to test_results.html"
+    )
+    parser.add_argument(
+        "--report-dir", default=".", help="Directory for output reports"
+    )
     args = parser.parse_args()
 
     patterns = args.tests if args.tests else ["test_*.sh"]
@@ -169,6 +211,7 @@ if __name__ == "__main__":
         patterns,
         args.timeout,
         args.coverage,
+        args.shell,
         json_report=args.json,
         html_report=args.html,
         report_dir=args.report_dir,
