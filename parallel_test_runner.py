@@ -6,6 +6,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List, Dict, Optional
+import string
 
 
 class Colors:
@@ -29,6 +30,13 @@ def setup_logger(verbose: bool) -> None:
 logger = logging.getLogger(__name__)
 
 
+
+def safe_name(name):
+    # Remove or replace non-printable characters
+    return ''.join(c for c in name if c in string.printable and c not in "\x1b")
+
+
+
 def find_test_scripts(directory: str = "tests", tags: Optional[List[str]] = None) -> List[Path]:
     """Locate test shell scripts optionally filtered by tags."""
     test_dir = Path(directory)
@@ -48,7 +56,7 @@ def find_test_scripts(directory: str = "tests", tags: Optional[List[str]] = None
 def run_test(script_path: Path, shell: str, timeout: int = 30) -> Dict:
     """Execute a single shell test script and return its result dictionary."""
     logger.debug("Running: %s", script_path)
-    try:
+
         result = subprocess.run(
             [shell, str(script_path)],
             capture_output=True,
@@ -96,7 +104,7 @@ def run_all_tests(scripts: List[Path], shell: str, max_workers: int = 4, timeout
                 "TIMEOUT": Colors.YELLOW,
                 "ERROR": Colors.RED,
             }.get(status, Colors.RESET)
-            logger.info("%s[%s]%s %s", color, status, Colors.RESET, result["name"])
+            logger.info("%s[%s]%s %s", color, status, Colors.RESET, safe_name(result["name"]))
             results.append(result)
     return results
 
