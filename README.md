@@ -2,6 +2,12 @@
 A simple Python-based test runner for shell scripts. Tests are discovered in the
 `tests/` directory by default and follow the pattern `test_*.sh`.
 
+Test scripts use `#!/usr/bin/env bash` shebangs so the correct Bash
+installation is located automatically.
+
+On macOS and Windows, ensure a Bash environment is available (e.g. via
+Homebrew, WSL or Git Bash) and that it appears on your `PATH`.
+
 ## Requirements
 
 Install dependencies via pip:
@@ -20,6 +26,8 @@ python3 test_runner.py [PATTERN ...] [options]
 
 - `-d, --directory DIR`  Directory containing test scripts (default: `tests`)
 - `-t, --timeout SECS`   Per-test timeout in seconds (default: 30)
+- `--shell SHELL`       Execute tests with the given shell (e.g. `bash`, `zsh`).
+  If omitted, each script's shebang is used.
 - `--coverage`           Collect coverage with `kcov` if installed
 - `--json`              Write JSON results to `test_results.json`
 - `--html`              Write HTML summary to `test_results.html`
